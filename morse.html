@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Морзе-кнопка</title>
+<style>
+:root{--bg:#f6f5f1;--fg:#1d1d1b;--mut:#77756e;--card:#fff;--acc:#d9531e;--acc2:#1e6fd9;--bd:#dedcd4;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161615;--fg:#f0eee8;--mut:#9a978e;--card:#222220;--bd:#383835}}
+:root[data-theme="dark"]{--bg:#161615;--fg:#f0eee8;--mut:#9a978e;--card:#222220;--bd:#383835}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;max-width:560px;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:10px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px 14px}
+#top{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column}
+#out{flex:1;font-size:28px;line-height:1.25;word-break:break-word;overflow:auto}
+#out .cur{display:inline-block;width:2px;height:1em;background:var(--acc);vertical-align:-2px;animation:bl 1s steps(2) infinite}
+@keyframes bl{50%{opacity:0}}
+#live{display:flex;align-items:center;gap:12px;min-height:44px;margin-top:6px}
+#seq{font:26px/1 ui-monospace,monospace;color:var(--acc);letter-spacing:4px;min-width:60px}
+#pre{font-size:30px;font-weight:700;color:var(--acc2);min-width:34px}
+#hints{display:flex;gap:6px;flex-wrap:wrap;font:13px ui-monospace,monospace;color:var(--mut)}
+#hints span{border:1px solid var(--bd);border-radius:8px;padding:2px 6px}
+#hints b{color:var(--fg)}
+.bar{display:flex;gap:8px}
+.bar button{flex:1;background:var(--card);color:var(--fg);border:1px solid var(--bd);border-radius:12px;padding:12px 4px;font-size:16px}
+.bar button:active{background:var(--bd)}
+#btn{position:relative;overflow:hidden;width:100%;height:30vh;min-height:150px;border:0;border-radius:22px;background:var(--acc);color:#fff;font-size:20px;font-weight:600;touch-action:none;transition:transform .08s}
+#btn::before{content:"";position:absolute;inset:0;background:var(--acc2);transform:scaleX(0);transform-origin:left}
+#btn.on::before{transform:scaleX(1);transition:transform linear var(--t,150ms)}
+#btn span{position:relative}
+#btn.on{transform:scale(.985)}
+details{font-size:15px}
+summary{cursor:pointer;color:var(--mut)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+input[type=range]{flex:1;min-width:120px}
+.tbl{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:4px 10px;font:14px ui-monospace,monospace;margin-top:10px}
+.tbl b{display:inline-block;width:1.4em}
+.hint{color:var(--mut);font-size:13px;margin:8px 0 0}
+[hidden]{display:none!important}
+#tap{display:contents}
+.tabs{display:flex;gap:8px}
+.tabs button{flex:1;padding:10px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--fg);font-size:16px;font-weight:600}
+.tabs button.act{background:var(--acc);color:#fff;border-color:var(--acc)}
+#tr{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
+#tr label{font-size:14px;color:var(--mut)}
+.ta{width:100%;min-height:120px;resize:vertical;border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--fg);padding:10px;font:18px/1.4 system-ui,sans-serif;user-select:text;-webkit-user-select:text}
+#mor{font:20px/1.5 ui-monospace,monospace;letter-spacing:2px}
+</style>
+</head>
+<body>
+<div class="tabs"><button id="tabTap" class="act">Набір кнопкою</button><button id="tabTr">Перекладач</button></div>
+<div id="tap">
+<div id="top" class="card">
+  <div id="out"></div>
+  <div id="live"><div id="pre"></div><div id="seq"></div></div>
+  <div id="hints"></div>
+</div>
+<div class="bar">
+  <button id="back">⌫</button>
+  <button id="space">Пробіл</button>
+  <button id="ok">OK</button>
+  <button id="copy">Копіювати</button>
+  <button id="clr">✕</button>
+</div>
+<button id="btn"><span>Тримай / тапай<br><small>(або Пробіл)</small></span></button>
+<details class="card">
+  <summary>Налаштування і таблиця</summary>
+  <div class="row"><label>Межа крапка/тире: <b id="tv">150</b> мс</label><input id="thr" type="range" min="60" max="400" value="150"></div>
+  <div class="row">
+    <button class="s" id="snd">Звук: так</button>
+    <button class="s" id="vib">Вібро: так</button>
+    <button class="s" id="lang">Мова: UA</button>
+    <button class="s" id="auto">Авто-межа: ні</button>
+  </div>
+  <p class="hint">Короткий натиск — крапка, довший за межу — тире (кнопка заповнюється синім). Пауза ≈ 3 одиниці — нова літера, ≈ 7 — пробіл. «OK» одразу завершує літеру.</p>
+  <div class="tbl" id="tbl"></div>
+</details>
+</div>
+<div id="tr" hidden>
+  <label>Текст</label>
+  <textarea id="txt" class="ta" placeholder="Напиши текст…" autocomplete="off"></textarea>
+  <div class="bar"><button id="fromTap">З набору</button><button id="cpTxt">Копіювати</button><button id="trLang">Мова: UA</button></div>
+  <label>Морзе (крапки, тире, «/» між словами)</label>
+  <textarea id="mor" class="ta" placeholder=".- -... / …" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+  <div class="bar"><button id="play">▶ Відтворити</button><button id="cpMor">Копіювати</button><button id="trClr">Очистити</button></div>
+  <p class="hint">Пиши в будь-яке поле — друге оновиться саме. Для розшифровки можна вставляти • та — . Швидкість звуку береться з налаштування межі.</p>
+</div>
+<script>
+const EN={'.-':'A','-...':'B','-.-.':'C','-..':'D','.':'E','..-.':'F','--.':'G','....':'H','..':'I','.---':'J','-.-':'K','.-..':'L','--':'M','-.':'N','---':'O','.--.':'P','--.-':'Q','.-.':'R','...':'S','-':'T','..-':'U','...-':'V','.--':'W','-..-':'X','-.--':'Y','--..':'Z','-----':'0','.----':'1','..---':'2','...--':'3','....-':'4','.....':'5','-....':'6','--...':'7','---..':'8','----.':'9'};
+const UA={'.-':'А','-...':'Б','.--':'В','--.':'Г','-..':'Д','.':'Е','..-..':'Є','...-':'Ж','--..':'З','-.--':'И','..':'І','.---.':'Ї','.---':'Й','-.-':'К','.-..':'Л','--':'М','-.':'Н','---':'О','.--.':'П','.-.':'Р','...':'С','-':'Т','..-':'У','..-.':'Ф','....':'Х','-.-.':'Ц','---.':'Ч','----':'Ш','--.-':'Щ','-..-':'Ь','..--':'Ю','.-.-':'Я'};
+const $=id=>document.getElementById(id);
+const S={thr:150,sound:true,vib:true,mode:0,auto:false};
+try{Object.assign(S,JSON.parse(localStorage.getItem('morse')||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem('morse',JSON.stringify(S))}catch(e){}};
+let seq='',text='',down=0,t1,t2,ac,osc;
+const map=()=>S.mode?EN:UA;
+function render(){
+  $('out').innerHTML='';
+  $('out').append(document.createTextNode(text));
+  const c=document.createElement('span');c.className='cur';$('out').append(c);
+  $('out').scrollTop=1e6;
+  $('seq').textContent=seq.replace(/\./g,'•').replace(/-/g,'—').split('').join(' ');
+  $('pre').textContent=seq?(map()[seq]||'?'):'';
+  const m=map(),h=seq?Object.entries(m).filter(([k])=>k.length>seq.length&&k.startsWith(seq)).slice(0,8):[];
+  $('hints').innerHTML=h.map(([k,v])=>`<span><b>${v}</b> ${k.slice(seq.length).replace(/\./g,'•').replace(/-/g,'—')}</span>`).join('');
+}
+function tone(on){
+  if(!S.sound)return;
+  try{
+    if(on){ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=650;g.gain.value=.15;o.connect(g).connect(ac.destination);o.start();osc=o}
+    else if(osc){osc.stop();osc=null}
+  }catch(e){}
+}
+const vib=n=>{if(S.vib&&navigator.vibrate)navigator.vibrate(n)};
+function commit(){clearTimeout(t1);clearTimeout(t2);if(!seq)return;text+=map()[seq]||'?';seq='';render()}
+function addSpace(){commit();if(text&&!text.endsWith(' ')){text+=' ';render()}}
+function press(){
+  if(down)return;
+  down=performance.now();clearTimeout(t1);clearTimeout(t2);
+  $('btn').style.setProperty('--t',S.thr+'ms');
+  $('btn').classList.add('on');tone(true);vib(12);
+}
+function release(){
+  if(!down)return;
+  const d=performance.now()-down;down=0;
+  $('btn').classList.remove('on');tone(false);
+  const dash=d>=S.thr;adapt(d);if(dash)vib(25);
+  seq+=dash?'-':'.';if(seq.length>6)seq=seq.slice(-6);render();
+  t1=setTimeout(commit,S.thr*3);
+  t2=setTimeout(addSpace,S.thr*7);
+}
+const b=$('btn');
+b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);press()});
+b.addEventListener('pointerup',release);
+b.addEventListener('pointercancel',release);
+b.addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('keydown',e=>{
+  if(e.code==='Space'){e.preventDefault();if(!e.repeat)press()}
+  else if(e.key==='Backspace')back();
+  else if(e.key==='Enter')commit();
+});
+addEventListener('keyup',e=>{if(e.code==='Space'){e.preventDefault();release()}});
+function back(){clearTimeout(t1);clearTimeout(t2);if(seq)seq=seq.slice(0,-1);else text=text.slice(0,-1);render()}
+$('back').onclick=back;
+$('space').onclick=addSpace;
+$('ok').onclick=commit;
+$('clr').onclick=()=>{clearTimeout(t1);clearTimeout(t2);seq='';text='';render()};
+$('copy').onclick=async e=>{
+  commit();const old=e.target.textContent;
+  try{await navigator.clipboard.writeText(text);e.target.textContent='Готово ✓'}
+  catch(_){const r=document.createRange();r.selectNodeContents($('out'));const s=getSelection();s.removeAllRanges();s.addRange(r);e.target.textContent='Виділено'}
+  setTimeout(()=>e.target.textContent=old,1200);
+};
+$('thr').oninput=e=>{S.thr=+e.target.value;$('tv').textContent=S.thr;save()};
+$('snd').onclick=()=>{S.sound=!S.sound;sync();save()};
+$('vib').onclick=()=>{S.vib=!S.vib;sync();save()};
+$('lang').onclick=()=>{S.mode^=1;sync();save();render()};
+function sync(){
+  $('thr').value=S.thr;$('tv').textContent=S.thr;
+  $('snd').textContent='Звук: '+(S.sound?'так':'ні');
+  $('auto').textContent='Авто-межа: '+(S.auto?'так':'ні');
+  $('vib').textContent='Вібро: '+(S.vib?'так':'ні');
+  $('lang').textContent='Мова: '+(S.mode?'EN':'UA');
+  $('tbl').innerHTML=Object.entries(map()).sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>`<div><b>${v}</b> ${k}</div>`).join('');
+}
+document.querySelectorAll('.row button').forEach(x=>{x.style.cssText='background:var(--card);color:var(--fg);border:1px solid var(--bd);border-radius:10px;padding:8px 12px;font-size:15px'});
+sync();render();
+
+/* ---- Авто-межа ---- */
+const D=[];
+function adapt(d){
+  if(!S.auto)return;
+  D.push(Math.min(Math.max(d,30),1000));if(D.length>14)D.shift();
+  if(D.length<6)return;
+  const a=[...D].sort((x,y)=>x-y);
+  let lo=a[0],hi=a[a.length-1];
+  for(let i=0;i<8;i++){
+    const m=(lo+hi)/2,L=a.filter(x=>x<m),H=a.filter(x=>x>=m);
+    if(!L.length||!H.length)return;
+    lo=L.reduce((p,c)=>p+c,0)/L.length;hi=H.reduce((p,c)=>p+c,0)/H.length;
+  }
+  if(hi/lo<1.8)return;
+  const n=Math.min(400,Math.max(60,(lo+hi)/2));
+  S.thr=Math.round(.7*S.thr+.3*n);
+  $('thr').value=S.thr;$('tv').textContent=S.thr;save();
+}
+$('auto').onclick=()=>{S.auto=!S.auto;D.length=0;sync();save()};
+
+/* ---- Перекладач ---- */
+const REV={};for(const m of [EN,UA])for(const[k,v]of Object.entries(m))REV[v]=k;
+let last='txt',pl=null;
+const norm=s=>s.replace(/[•·]/g,'.').replace(/[—–−_]/g,'-');
+function enc(s){
+  return s.toUpperCase().replace(/Ґ/g,'Г').split(/\s+/).filter(Boolean)
+    .map(w=>[...w].map(c=>REV[c]).filter(Boolean).join(' ')).filter(Boolean).join(' / ');
+}
+function dec(m){
+  const o=S.mode?UA:EN;
+  return norm(m).split(/\s*[\/|]\s*|\s{3,}/).map(w=>w.trim().split(/\s+/).filter(Boolean)
+    .map(c=>map()[c]||o[c]||'?').join('')).join(' ').trim();
+}
+function refresh(){
+  if(last==='mor')$('txt').value=dec($('mor').value);
+  else $('mor').value=enc($('txt').value);
+  $('trLang').textContent=$('lang').textContent;
+}
+function show(t){
+  $('tap').hidden=t!=='tap';$('tr').hidden=t!=='tr';
+  $('tabTap').classList.toggle('act',t==='tap');$('tabTr').classList.toggle('act',t==='tr');
+  if(t!=='tr')stopPlay();
+  else if(!$('txt').value&&!$('mor').value&&text.trim()){commit();$('txt').value=text.trim();last='txt';refresh()}
+}
+$('tabTap').onclick=()=>show('tap');
+$('tabTr').onclick=()=>show('tr');
+$('txt').oninput=()=>{last='txt';$('mor').value=enc($('txt').value)};
+$('mor').oninput=()=>{last='mor';$('txt').value=dec($('mor').value)};
+$('fromTap').onclick=()=>{commit();$('txt').value=text.trim();last='txt';refresh()};
+$('trLang').onclick=()=>{$('lang').click();refresh()};
+$('trClr').onclick=()=>{stopPlay();$('txt').value='';$('mor').value=''};
+function cp(id,btn){
+  const el=$(id),old=btn.textContent;
+  navigator.clipboard.writeText(el.value).then(()=>btn.textContent='Готово ✓').catch(()=>{el.select();btn.textContent='Виділено'});
+  setTimeout(()=>btn.textContent=old,1200);
+}
+$('cpTxt').onclick=e=>cp('txt',e.target);
+$('cpMor').onclick=e=>cp('mor',e.target);
+function stopPlay(){
+  if(pl){pl.nodes.forEach(o=>{try{o.stop()}catch(e){}});clearTimeout(pl.to);pl=null}
+  $('play').textContent='▶ Відтворити';
+}
+$('play').onclick=()=>{
+  if(pl){stopPlay();return}
+  const s=norm($('mor').value);if(!s.trim())return;
+  try{
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==='suspended')ac.resume();
+    const u=S.thr*.6/1000;let t=ac.currentTime+.05;const nodes=[];
+    for(const c of s){
+      if(c==='.'||c==='-'){
+        const d=c==='.'?u:3*u,o=ac.createOscillator(),g=ac.createGain();
+        o.frequency.value=650;g.gain.value=.15;o.connect(g).connect(ac.destination);
+        o.start(t);o.stop(t+d);nodes.push(o);t+=d+u;
+      }else if(c===' '||c==='/')t+=2*u;
+    }
+    pl={nodes,to:setTimeout(stopPlay,(t-ac.currentTime)*1000+100)};
+    $('play').textContent='■ Стоп';
+  }catch(e){}
+};
+</script>
+</body>
+</html>
